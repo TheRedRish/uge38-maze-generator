@@ -152,6 +152,8 @@ class Maze {
     }
 
     generate() {
+        const chanceToVisitRandomCellPercent = 10; // 0-100
+
         let start_x = 0;
         let start_y = 0;
 
@@ -187,11 +189,20 @@ class Maze {
             if (unvisitedNeighbors.length > 0) {
                 const randomNeighborCell = unvisitedNeighbors[randomInteger(0, unvisitedNeighbors.length - 1)];
                 currentCell.punchWallDown(randomNeighborCell);
+                // currentCell.draw(this.ctx, this.cellWidth);
                 stack.push(currentCell);
-                currentCell = randomNeighborCell;
+                if (stack.length > 0 && randomInteger(0, 100) < chanceToVisitRandomCellPercent) {
+                    currentCell = stack[randomInteger(0, stack.length - 1)];
+                } else {
+                    currentCell = randomNeighborCell;
+                }
                 currentCell.visited = true;
             } else {
-                currentCell = stack.pop();
+                if (stack.length > 0 && randomInteger(0, 100) < chanceToVisitRandomCellPercent) {
+                    currentCell = stack[randomInteger(0, stack.length - 1)];
+                } else {
+                    currentCell = stack.pop();
+                }
             }
         }
     }
@@ -201,7 +212,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById('canvas');
     const maze = new Maze(20, 20, canvas);
 
-    // TODO: Fjern nogle af væggene på en smart måde.
     maze.generate();
 
     maze.draw();
