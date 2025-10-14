@@ -1,7 +1,5 @@
 function randomInteger(min, max) {
-    min = Math.ceil(min);
-    max = Math.floor(max);
-    return Math.floor(Math.random() * (max - min)) + min;
+    return Math.floor(Math.random() * (max + 1 - min) + min);
 }
 
 class Cell {
@@ -154,8 +152,8 @@ class Maze {
     }
 
     generate() {
-        const start_x = randomInteger(0, this.cols);
-        const start_y = randomInteger(0, this.rows);
+        const start_x = randomInteger(0, this.cols - 1);
+        const start_y = randomInteger(0, this.rows - 1);
         let currentCell = this.grid[start_x][start_y];
         let stack = [];
 
@@ -173,7 +171,7 @@ class Maze {
         while (currentCell != null) {
             let unvisitedNeighbors = currentCell.unvisitedNeighbors(this.grid);
             if (unvisitedNeighbors.length > 0) {
-                const randomNeighborCell = unvisitedNeighbors[randomInteger(0, unvisitedNeighbors.length)];
+                const randomNeighborCell = unvisitedNeighbors[randomInteger(0, unvisitedNeighbors.length - 1)];
                 currentCell.punchWallDown(randomNeighborCell);
                 stack.push(currentCell);
                 currentCell = randomNeighborCell;
