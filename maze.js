@@ -152,8 +152,22 @@ class Maze {
     }
 
     generate() {
-        const start_x = randomInteger(0, this.cols - 1);
-        const start_y = randomInteger(0, this.rows - 1);
+        let start_x = 0;
+        let start_y = 0;
+
+        const startXOrY = randomInteger(0, 1);
+        if (startXOrY === 0) {
+            // Start ved en tilfældig celle i den øverste række eller nederste række
+            start_x = randomInteger(0, this.cols - 1);
+            start_y = randomInteger(0, 1) * (this.rows - 1);
+            start_y > 0 ? this.grid[start_x][start_y].walls.bottom = false : this.grid[start_x][start_y].walls.top = false;
+        } else {
+            // Start ved en tilfældig celle i den venstre kolonne eller højre kolonne
+            start_x = randomInteger(0, 1) * (this.cols - 1);
+            start_y = randomInteger(0, this.rows - 1);
+            start_x > 0 ? this.grid[start_x][start_y].walls.right = false : this.grid[start_x][start_y].walls.left = false;
+        }
+
         let currentCell = this.grid[start_x][start_y];
         let stack = [];
 
