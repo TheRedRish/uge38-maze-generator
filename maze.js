@@ -164,7 +164,7 @@ class Maze {
                 case "left":
                     this.ctx.rotate(Math.PI / 2); // 90°
                     break;
-                // "top" is default, no rotation needed
+                // "bottom" is default, no rotation needed
             }
 
             // draw arrow (pointing up by default)
