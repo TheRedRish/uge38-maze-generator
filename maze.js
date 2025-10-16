@@ -15,39 +15,28 @@ class Cell {
         this.visited = false;
     }
 
-    draw(ctx, cellWidth) {
-        ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-
+    draw(ctx, cellWidth, isActive = false) {
         const px = this.x * cellWidth;
         const py = this.y * cellWidth;
 
-        ctx.moveTo(px, py);
-
-        if (this.walls.left) {
-            ctx.lineTo(px, py + cellWidth);
-        } else {
-            ctx.moveTo(px, py + cellWidth);
+        // highlight current cell
+        if (this.visited) {
+            ctx.fillStyle = "#cce5ff";
+            ctx.fillRect(px, py, cellWidth, cellWidth);
+        }
+        if (isActive) {
+            ctx.fillStyle = "#ff6666";
+            ctx.fillRect(px, py, cellWidth, cellWidth);
         }
 
-        if (this.walls.bottom) {
-            ctx.lineTo(px + cellWidth, py + cellWidth);
-        } else {
-            ctx.moveTo(px + cellWidth, py + cellWidth);
-        }
+        ctx.strokeStyle = "#000000";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
 
-        if (this.walls.right) {
-            ctx.lineTo(px + cellWidth, py);
-        } else {
-            ctx.moveTo(px + cellWidth, py);
-        }
-
-        if (this.walls.top) {
-            ctx.lineTo(px, py);
-        } else {
-            ctx.moveTo(px, py);
-        }
+        if (this.walls.top) { ctx.moveTo(px, py); ctx.lineTo(px + cellWidth, py); }
+        if (this.walls.right) { ctx.moveTo(px + cellWidth, py); ctx.lineTo(px + cellWidth, py + cellWidth); }
+        if (this.walls.bottom) { ctx.moveTo(px + cellWidth, py + cellWidth); ctx.lineTo(px, py + cellWidth); }
+        if (this.walls.left) { ctx.moveTo(px, py + cellWidth); ctx.lineTo(px, py); }
 
         ctx.stroke();
     }
@@ -143,19 +132,17 @@ class Maze {
         }
     }
 
-    draw() {
+    draw(activeCell = null) {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         for (let i = 0; i < this.rows; i += 1) {
             for (let j = 0; j < this.cols; j += 1) {
-                this.grid[i][j].draw(this.ctx, this.cellWidth);
+                this.grid[i][j].draw(this.ctx, this.cellWidth, this.grid[i][j] === activeCell);
             }
         }
     }
 
-    generate() {
-        const chanceToVisitRandomCellPercent = 10; // 0-100
-
-        let start_x = 0;
-        let start_y = 0;
+    async generateStepwise(chanceToVisitRandomCellPercent = 10, delay = 50) {
+        let start_x = 0, start_y = 0;
 
         const startXOrY = randomInteger(0, 1);
         if (startXOrY === 0) {
@@ -185,36 +172,33 @@ class Maze {
         // If still not, you're done
 
         while (currentCell != null) {
+            this.draw(currentCell);
+            await new Promise(r => setTimeout(r, delay));
+
+            if (stack.length > 0 && randomInteger(0, 100) < chanceToVisitRandomCellPercent) {
+                currentCell = stack[randomInteger(0, stack.length - 1)];
+            }
+
             let unvisitedNeighbors = currentCell.unvisitedNeighbors(this.grid);
             if (unvisitedNeighbors.length > 0) {
                 const randomNeighborCell = unvisitedNeighbors[randomInteger(0, unvisitedNeighbors.length - 1)];
                 currentCell.punchWallDown(randomNeighborCell);
-                // currentCell.draw(this.ctx, this.cellWidth);
                 stack.push(currentCell);
-                if (stack.length > 0 && randomInteger(0, 100) < chanceToVisitRandomCellPercent) {
-                    currentCell = stack[randomInteger(0, stack.length - 1)];
-                } else {
-                    currentCell = randomNeighborCell;
-                }
+                currentCell = randomNeighborCell;
                 currentCell.visited = true;
             } else {
-                if (stack.length > 0 && randomInteger(0, 100) < chanceToVisitRandomCellPercent) {
-                    currentCell = stack[randomInteger(0, stack.length - 1)];
-                } else {
-                    currentCell = stack.pop();
-                }
+                currentCell = stack.pop();
             }
         }
+
+        this.draw();
     }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById('canvas');
-    const maze = new Maze(20, 20, canvas);
-
-    maze.generate();
-
-    maze.draw();
-
-    console.log(maze);
-})
+    const mazeHeight = 20, mazeWidth = 20;
+    const maze = new Maze(mazeWidth, mazeHeight, canvas);
+    const randomChance = 10, delay = 200;
+    maze.generateStepwise(randomChance, delay);
+});
