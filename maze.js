@@ -121,6 +121,9 @@ class Maze {
         this.ctx = canvas.getContext('2d');
         this.cellWidth = canvas.width / cols;
         this.initializeGrid();
+        this.startCell = null;
+        this.endCell = null;
+        this.startDirection = null;
     }
 
     initializeGrid() {
@@ -139,6 +142,65 @@ class Maze {
                 this.grid[i][j].draw(this.ctx, this.cellWidth, this.grid[i][j] === activeCell);
             }
         }
+
+        // Draw start arrow
+        if (this.startCell) {
+            const cw = this.cellWidth;
+            const { x, y } = this.startCell;
+            const px = x * cw + cw / 2;
+            const py = y * cw + cw / 2;
+
+            this.ctx.save(); // save state before rotation
+            this.ctx.translate(px, py); // move origin to cell center
+
+            // rotate depending on entrance wall
+            switch (this.startDirection) {
+                case "top":
+                    this.ctx.rotate(Math.PI); // 180°
+                    break;
+                case "right":
+                    this.ctx.rotate(-Math.PI / 2); // -90°
+                    break;
+                case "left":
+                    this.ctx.rotate(Math.PI / 2); // 90°
+                    break;
+                // "top" is default, no rotation needed
+            }
+
+            // draw arrow (pointing up by default)
+            this.ctx.fillStyle = "limegreen";
+            this.ctx.beginPath();
+            this.ctx.moveTo(0, -cw / 3);
+            this.ctx.lineTo(-cw / 4, cw / 4);
+            this.ctx.lineTo(cw / 4, cw / 4);
+            this.ctx.closePath();
+            this.ctx.fill();
+
+            this.ctx.restore(); // restore to unrotated state
+        }
+
+        // Draw endpoint
+        if (this.endCell) {
+            const cw = this.cellWidth;
+            const { x, y } = this.endCell;
+            const px = x * cw + cw / 2;
+            const py = y * cw + cw / 2;
+
+            this.ctx.fillStyle = "limegreen";
+            this.ctx.beginPath();
+            this.ctx.arc(px, py, cw / 4, 0, Math.PI * 2);
+            this.ctx.fill();
+        }
+    }
+
+    getRandomEndCell() {
+        const visitedCells = [];
+        for (let i = 0; i < this.rows; i++) {
+            for (let j = 0; j < this.cols; j++) {
+                if (this.grid[i][j].visited) visitedCells.push(this.grid[i][j]);
+            }
+        }
+        return visitedCells[randomInteger(0, visitedCells.length - 1)];
     }
 
     async generateStepwise(chanceToVisitRandomCellPercent = 10, delay = 50) {
@@ -146,38 +208,36 @@ class Maze {
 
         const startXOrY = randomInteger(0, 1);
         if (startXOrY === 0) {
-            // Start ved en tilfældig celle i den øverste række eller nederste række
             start_x = randomInteger(0, this.cols - 1);
             start_y = randomInteger(0, 1) * (this.rows - 1);
-            start_y > 0 ? this.grid[start_x][start_y].walls.bottom = false : this.grid[start_x][start_y].walls.top = false;
+            if (start_y > 0) {
+                this.grid[start_x][start_y].walls.bottom = false;
+                this.startDirection = "bottom";
+            } else {
+                this.grid[start_x][start_y].walls.top = false;
+                this.startDirection = "top";
+            }
         } else {
-            // Start ved en tilfældig celle i den venstre kolonne eller højre kolonne
             start_x = randomInteger(0, 1) * (this.cols - 1);
             start_y = randomInteger(0, this.rows - 1);
-            start_x > 0 ? this.grid[start_x][start_y].walls.right = false : this.grid[start_x][start_y].walls.left = false;
+            if (start_x > 0) {
+                this.grid[start_x][start_y].walls.right = false;
+                this.startDirection = "right";
+            } else {
+                this.grid[start_x][start_y].walls.left = false;
+                this.startDirection = "left";
+            }
         }
 
-        let currentCell = this.grid[start_x][start_y];
+        this.startCell = this.grid[start_x][start_y];
+        let currentCell = this.startCell;
         let stack = [];
 
         currentCell.visited = true;
 
-        // Get unvisited neighbors
-        // If there are unvisited neighbors:
-        // - pick a random one of them
-        // - carve a hole through the wall
-        // - push current cell on stack
-        // - make that neighbor the current cell
-        // If not, make the top of stack the current cell
-        // If still not, you're done
-
-        while (currentCell != null) {
+        while (currentCell !== undefined) {
             this.draw(currentCell);
             await new Promise(r => setTimeout(r, delay));
-
-            if (stack.length > 0 && randomInteger(0, 100) < chanceToVisitRandomCellPercent) {
-                currentCell = stack[randomInteger(0, stack.length - 1)];
-            }
 
             let unvisitedNeighbors = currentCell.unvisitedNeighbors(this.grid);
             if (unvisitedNeighbors.length > 0) {
@@ -187,10 +247,15 @@ class Maze {
                 currentCell = randomNeighborCell;
                 currentCell.visited = true;
             } else {
-                currentCell = stack.pop();
+                if (randomInteger(0, 100) < chanceToVisitRandomCellPercent) {
+                    currentCell = stack[randomInteger(0, stack.length - 1)];
+                } else {
+                    currentCell = stack.pop();
+                }
             }
         }
 
+        this.endCell = this.getRandomEndCell();
         this.draw();
     }
 }
@@ -199,6 +264,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById('canvas');
     const mazeHeight = 20, mazeWidth = 20;
     const maze = new Maze(mazeWidth, mazeHeight, canvas);
-    const randomChance = 10, delay = 200;
+    const randomChance = 10, delay = 500;
     maze.generateStepwise(randomChance, delay);
 });
